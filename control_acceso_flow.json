@@ -1,0 +1,312 @@
+[
+    {
+        "id": "flow_control_acceso",
+        "type": "tab",
+        "label": "Control de Acceso Vehicular (Físico + MQTT)",
+        "disabled": false,
+        "info": "Flujo de Node-RED para conectar el ESP32 físico por MQTT con el Dashboard Web."
+    },
+    {
+        "id": "mqtt_broker_vehicular",
+        "type": "mqtt-broker",
+        "name": "Broker MQTT",
+        "broker": "TU_IP_DEL_VPS",
+        "port": "1883",
+        "clientid": "",
+        "autoConnect": true,
+        "usetls": false,
+        "compatmode": false,
+        "protocolVersion": "4",
+        "keepalive": "60",
+        "cleansession": true,
+        "birthTopic": "",
+        "birthQos": "0",
+        "birthPayload": "",
+        "closeTopic": "",
+        "closeQos": "0",
+        "closePayload": "",
+        "willTopic": "",
+        "willQos": "0",
+        "willPayload": "",
+        "credentials": {
+            "user": "TU_USUARIO_MQTT",
+            "password": "TU_PASSWORD_MQTT"
+        }
+    },
+    {
+        "id": "mqtt_in_totora",
+        "type": "mqtt in",
+        "z": "flow_control_acceso",
+        "name": "Suscripción a topic 'totora'",
+        "topic": "totora",
+        "qos": "0",
+        "datatype": "auto-detect",
+        "broker": "mqtt_broker_vehicular",
+        "nl": false,
+        "rap": true,
+        "rh": 0,
+        "inputs": 0,
+        "x": 150,
+        "y": 120,
+        "wires": [
+            [
+                "process_mqtt_messages"
+            ]
+        ]
+    },
+    {
+        "id": "process_mqtt_messages",
+        "type": "function",
+        "z": "flow_control_acceso",
+        "name": "Procesar Mensajes MQTT",
+        "func": "let stats = global.get(\"vehiculo_stats\") || {\n    todayCount: 0,\n    totalCount: 0,\n    gateState: \"CERRADA\",\n    lightState: \"ROJO\",\n    lastDistance: 150,\n    hourlyTraffic: Array(12).fill(0),\n    logs: []\n};\n\nlet msgString = msg.payload.toString();\n\n// Formato de hora local para los logs\nlet now = new Date();\nlet timeStr = now.toLocaleDateString() + \" \" + now.toLocaleTimeString();\n\n// Detectar distancia y número de auto: \"ALERTA: Carro #1 detectado a 12 cm\"\nlet matchCar = msgString.match(/Carro\\s+#(\\d+)\\s+detectado\\s+a\\s+(\\d+)\\s+cm/);\n\nif (matchCar) {\n    let dist = parseInt(matchCar[2]);\n    stats.lastDistance = dist;\n    \n    // Incrementar contadores\n    stats.todayCount += 1;\n    stats.totalCount += 1;\n    \n    // Sumar 1 a la hora actual en el gráfico (último elemento de la lista de 12 horas)\n    stats.hourlyTraffic[11] += 1;\n    \n    stats.logs.push({\n        time: timeStr,\n        event: \"Vehículo Detectado (Físico)\",\n        distance: dist + \" cm\",\n        state: stats.gateState\n    });\n} else if (msgString.includes(\"VERDE\") || msgString.includes(\"Subiendo barrera\")) {\n    stats.gateState = \"ABIERTA\";\n    stats.lightState = \"VERDE\";\n    stats.logs.push({\n        time: timeStr,\n        event: msgString,\n        distance: stats.lastDistance + \" cm\",\n        state: \"ABIERTA\"\n    });\n} else if (msgString.includes(\"AMARILLO\")) {\n    stats.gateState = \"CERRANDO\";\n    stats.lightState = \"AMARILLO\";\n    stats.logs.push({\n        time: timeStr,\n        event: msgString,\n        distance: stats.lastDistance + \" cm\",\n        state: \"CERRANDO\"\n    });\n} else if (msgString.includes(\"ROJO\") || msgString.includes(\"Bajando barrera\")) {\n    stats.gateState = \"CERRADA\";\n    stats.lightState = \"ROJO\";\n    stats.logs.push({\n        time: timeStr,\n        event: msgString,\n        distance: stats.lastDistance + \" cm\",\n        state: \"CERRADA\"\n    });\n} else {\n    // Log genérico para otras publicaciones de estado\n    stats.logs.push({\n        time: timeStr,\n        event: msgString,\n        distance: stats.lastDistance + \" cm\",\n        state: stats.gateState\n    });\n}\n\n// Mantener últimos 50 logs para no sobrecargar memoria\nif (stats.logs.length > 50) {\n    stats.logs.shift();\n}\n\nglobal.set(\"vehiculo_stats\", stats);\nreturn null;",
+        "outputs": 1,
+        "timeout": "",
+        "noerr": 0,
+        "initialize": "",
+        "finalize": "",
+        "libs": [],
+        "x": 420,
+        "y": 120,
+        "wires": [
+            []
+        ]
+    },
+    {
+        "id": "http_api_datos_in",
+        "type": "http in",
+        "z": "flow_control_acceso",
+        "name": "GET /api/datos",
+        "url": "/api/datos",
+        "method": "get",
+        "upload": false,
+        "swaggerDoc": "",
+        "x": 130,
+        "y": 220,
+        "wires": [
+            [
+                "get_stats_memory"
+            ]
+        ]
+    },
+    {
+        "id": "get_stats_memory",
+        "type": "function",
+        "z": "flow_control_acceso",
+        "name": "Obtener Stats de Memoria",
+        "func": "let stats = global.get(\"vehiculo_stats\") || {\n    todayCount: 0,\n    totalCount: 0,\n    gateState: \"CERRADA\",\n    lightState: \"ROJO\",\n    lastDistance: 150,\n    hourlyTraffic: Array(12).fill(0),\n    logs: []\n};\n\nmsg.payload = stats;\nreturn msg;",
+        "outputs": 1,
+        "timeout": "",
+        "noerr": 0,
+        "initialize": "",
+        "finalize": "",
+        "libs": [],
+        "x": 370,
+        "y": 220,
+        "wires": [
+            [
+                "http_api_datos_res"
+            ]
+        ]
+    },
+    {
+        "id": "http_api_datos_res",
+        "type": "http response",
+        "z": "flow_control_acceso",
+        "name": "Responder JSON",
+        "statusCode": "",
+        "headers": {
+            "Access-Control-Allow-Origin": "*",
+            "Access-Control-Allow-Headers": "Content-Type",
+            "Access-Control-Allow-Methods": "GET, POST, OPTIONS"
+        },
+        "x": 610,
+        "y": 220,
+        "wires": []
+    },
+    {
+        "id": "http_api_comando_in",
+        "type": "http in",
+        "z": "flow_control_acceso",
+        "name": "POST /api/comando",
+        "url": "/api/comando",
+        "method": "post",
+        "upload": false,
+        "swaggerDoc": "",
+        "x": 140,
+        "y": 320,
+        "wires": [
+            [
+                "process_comando_override"
+            ]
+        ]
+    },
+    {
+        "id": "process_comando_override",
+        "type": "function",
+        "z": "flow_control_acceso",
+        "name": "Procesar Comando Manual",
+        "func": "let comando = msg.payload.comando; // \"ABRIR\", \"CERRAR\" o \"AUTO\"\n\nlet stats = global.get(\"vehiculo_stats\") || {\n    todayCount: 0,\n    totalCount: 0,\n    gateState: \"CERRADA\",\n    lightState: \"ROJO\",\n    lastDistance: 150,\n    hourlyTraffic: Array(12).fill(0),\n    logs: []\n};\n\nlet now = new Date();\nlet timeStr = now.toLocaleDateString() + \" \" + now.toLocaleTimeString();\n\nif (comando === \"ABRIR\") {\n    stats.gateState = \"ABIERTA\";\n    stats.lightState = \"VERDE\";\n    stats.logs.push({\n        time: timeStr,\n        event: \"Comando: Abrir Barrera (Manual)\",\n        distance: \"--\",\n        state: \"ABIERTA\"\n    });\n} else if (comando === \"CERRAR\") {\n    stats.gateState = \"CERRADA\";\n    stats.lightState = \"ROJO\";\n    stats.logs.push({\n        time: timeStr,\n        event: \"Comando: Cerrar Barrera (Manual)\",\n        distance: \"--\",\n        state: \"CERRADA\"\n    });\n} else if (comando === \"AUTO\") {\n    stats.logs.push({\n        time: timeStr,\n        event: \"Restableciendo Control Automático\",\n        distance: \"--\",\n        state: stats.gateState\n    });\n}\n\nglobal.set(\"vehiculo_stats\", stats);\n\n// Mandamos la respuesta HTTP rápida al dashboard\nlet responseMsg = {\n    payload: { status: \"success\", comando: comando },\n    statusCode: 200,\n    headers: {\n        \"Access-Control-Allow-Origin\": \"*\",\n        \"Access-Control-Allow-Headers\": \"Content-Type\",\n        \"Access-Control-Allow-Methods\": \"GET, POST, OPTIONS\"\n    }\n};\n\n// Duplicamos el mensaje: uno para HTTP Response, otro para el broker MQTT\nlet mqttMsg = {\n    payload: comando\n};\n\nreturn [responseMsg, mqttMsg];",
+        "outputs": 2,
+        "timeout": "",
+        "noerr": 0,
+        "initialize": "",
+        "finalize": "",
+        "libs": [],
+        "x": 380,
+        "y": 320,
+        "wires": [
+            [
+                "http_api_comando_res"
+            ],
+            [
+                "mqtt_out_comandos"
+            ]
+        ]
+    },
+    {
+        "id": "http_api_comando_res",
+        "type": "http response",
+        "z": "flow_control_acceso",
+        "name": "Responder HTTP Comando",
+        "statusCode": "",
+        "headers": {},
+        "x": 640,
+        "y": 300,
+        "wires": []
+    },
+    {
+        "id": "mqtt_out_comandos",
+        "type": "mqtt out",
+        "z": "flow_control_acceso",
+        "name": "Publicar a 'totora/comandos'",
+        "topic": "totora/comandos",
+        "qos": "0",
+        "retain": "false",
+        "respTopic": "",
+        "contentType": "",
+        "userProps": "",
+        "correl": "",
+        "expiry": "",
+        "broker": "mqtt_broker_vehicular",
+        "x": 640,
+        "y": 360,
+        "wires": []
+    },
+    {
+        "id": "http_preflight_comando",
+        "type": "http in",
+        "z": "flow_control_acceso",
+        "name": "OPTIONS /api/comando",
+        "url": "/api/comando",
+        "method": "options",
+        "upload": false,
+        "swaggerDoc": "",
+        "x": 150,
+        "y": 420,
+        "wires": [
+            [
+                "response_preflight"
+            ]
+        ]
+    },
+    {
+        "id": "response_preflight",
+        "type": "http response",
+        "z": "flow_control_acceso",
+        "name": "Responder Preflight (CORS)",
+        "statusCode": "204",
+        "headers": {
+            "Access-Control-Allow-Origin": "*",
+            "Access-Control-Allow-Methods": "GET, POST, OPTIONS",
+            "Access-Control-Allow-Headers": "Content-Type"
+        },
+        "x": 420,
+        "y": 420,
+        "wires": []
+    },
+    {
+        "id": "http_api_reset_in",
+        "type": "http in",
+        "z": "flow_control_acceso",
+        "name": "POST /api/reset",
+        "url": "/api/reset",
+        "method": "post",
+        "upload": false,
+        "swaggerDoc": "",
+        "x": 130,
+        "y": 500,
+        "wires": [
+            [
+                "process_api_reset"
+            ]
+        ]
+    },
+    {
+        "id": "process_api_reset",
+        "type": "function",
+        "z": "flow_control_acceso",
+        "name": "Resetear Global Stats",
+        "func": "let initialStats = {\n    todayCount: 0,\n    totalCount: 0,\n    gateState: \"CERRADA\",\n    lightState: \"ROJO\",\n    lastDistance: 150,\n    hourlyTraffic: Array(12).fill(0),\n    logs: []\n};\n\nglobal.set(\"vehiculo_stats\", initialStats);\n\nmsg.payload = { status: \"success\", message: \"Datos reiniciados a cero\" };\nreturn msg;",
+        "outputs": 1,
+        "timeout": "",
+        "noerr": 0,
+        "initialize": "",
+        "finalize": "",
+        "libs": [],
+        "x": 360,
+        "y": 500,
+        "wires": [
+            [
+                "http_api_reset_res"
+            ]
+        ]
+    },
+    {
+        "id": "http_api_reset_res",
+        "type": "http response",
+        "z": "flow_control_acceso",
+        "name": "Responder Reset",
+        "statusCode": "200",
+        "headers": {
+            "Access-Control-Allow-Origin": "*",
+            "Access-Control-Allow-Headers": "Content-Type",
+            "Access-Control-Allow-Methods": "GET, POST, OPTIONS"
+        },
+        "x": 590,
+        "y": 500,
+        "wires": []
+    },
+    {
+        "id": "http_preflight_reset",
+        "type": "http in",
+        "z": "flow_control_acceso",
+        "name": "OPTIONS /api/reset",
+        "url": "/api/reset",
+        "method": "options",
+        "upload": false,
+        "swaggerDoc": "",
+        "x": 140,
+        "y": 580,
+        "wires": [
+            [
+                "response_preflight_reset"
+            ]
+        ]
+    },
+    {
+        "id": "response_preflight_reset",
+        "type": "http response",
+        "z": "flow_control_acceso",
+        "name": "Responder Preflight Reset (CORS)",
+        "statusCode": "204",
+        "headers": {
+            "Access-Control-Allow-Origin": "*",
+            "Access-Control-Allow-Methods": "GET, POST, OPTIONS",
+            "Access-Control-Allow-Headers": "Content-Type"
+        },
+        "x": 420,
+        "y": 580,
+        "wires": []
+    }
+]
