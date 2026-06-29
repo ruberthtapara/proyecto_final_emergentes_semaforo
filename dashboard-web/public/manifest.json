@@ -1,0 +1,18 @@
+{
+  "short_name": "Acceso Vehicular",
+  "name": "Control de Acceso Vehicular",
+  "start_url": "/",
+  "background_color": "#0b0f19",
+  "theme_color": "#0b0f19",
+  "display": "standalone",
+  "orientation": "portrait",
+  "description": "Dashboard para monitorear el acceso vehicular en tiempo real con ESP32 y Node-RED",
+  "icons": [
+    {
+      "src": "favicon.svg",
+      "sizes": "any",
+      "type": "image/svg+xml",
+      "purpose": "any maskable"
+    }
+  ]
+}

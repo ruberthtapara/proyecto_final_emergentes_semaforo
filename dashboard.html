@@ -1,0 +1,1048 @@
+<!DOCTYPE html>
+<html lang="es">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Control de Acceso Vehicular - Dashboard</title>
+    <!-- Google Fonts: Outfit -->
+    <link href="https://fonts.googleapis.com/css2?family=Outfit:wght@300;400;600;800&display=swap" rel="stylesheet">
+    <!-- Chart.js CDN -->
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <style>
+        :root {
+            --bg-primary: #0b0f19;
+            --bg-secondary: rgba(255, 255, 255, 0.03);
+            --border-color: rgba(255, 255, 255, 0.08);
+            --text-primary: #ffffff;
+            --text-secondary: #94a3b8;
+            --color-green: #10b981;
+            --color-red: #ef4444;
+            --color-orange: #f59e0b;
+            --color-blue: #3b82f6;
+            --glow-green: rgba(16, 185, 129, 0.2);
+            --glow-red: rgba(239, 68, 68, 0.2);
+            --glow-blue: rgba(59, 130, 246, 0.2);
+            --font-family: 'Outfit', sans-serif;
+        }
+
+        * {
+            box-sizing: border-box;
+            margin: 0;
+            padding: 0;
+        }
+
+        body {
+            font-family: var(--font-family);
+            background-color: var(--bg-primary);
+            color: var(--text-primary);
+            min-height: 100vh;
+            display: flex;
+            flex-direction: column;
+            overflow-x: hidden;
+            background-image: 
+                radial-gradient(circle at 10% 20%, rgba(59, 130, 246, 0.08) 0%, transparent 40%),
+                radial-gradient(circle at 90% 80%, rgba(16, 185, 129, 0.05) 0%, transparent 40%);
+        }
+
+        header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding: 24px 5%;
+            border-bottom: 1px solid var(--border-color);
+            background: rgba(11, 15, 25, 0.8);
+            backdrop-filter: blur(12px);
+            position: sticky;
+            top: 0;
+            z-index: 100;
+        }
+
+        .logo-container {
+            display: flex;
+            align-items: center;
+            gap: 12px;
+        }
+
+        .logo-icon {
+            width: 40px;
+            height: 40px;
+            background: linear-gradient(135deg, var(--color-blue), var(--color-green));
+            border-radius: 12px;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            font-weight: 800;
+            font-size: 20px;
+            box-shadow: 0 4px 15px rgba(59, 130, 246, 0.3);
+        }
+
+        h1 {
+            font-size: 22px;
+            font-weight: 600;
+            letter-spacing: -0.5px;
+        }
+
+        .status-badge {
+            display: flex;
+            align-items: center;
+            gap: 8px;
+            padding: 8px 16px;
+            border-radius: 20px;
+            font-size: 14px;
+            font-weight: 600;
+            background: var(--bg-secondary);
+            border: 1px solid var(--border-color);
+            transition: all 0.3s ease;
+        }
+
+        .status-dot {
+            width: 10px;
+            height: 10px;
+            border-radius: 50%;
+            background-color: var(--color-orange);
+            box-shadow: 0 0 10px var(--color-orange);
+            display: inline-block;
+        }
+
+        .status-dot.online {
+            background-color: var(--color-green);
+            box-shadow: 0 0 10px var(--color-green);
+        }
+
+        .status-dot.offline {
+            background-color: var(--color-red);
+            box-shadow: 0 0 10px var(--color-red);
+        }
+
+        main {
+            flex: 1;
+            padding: 30px 5%;
+            display: flex;
+            flex-direction: column;
+            gap: 30px;
+            max-width: 1600px;
+            margin: 0 auto;
+            width: 100%;
+        }
+
+        /* CONFIGURATION CARD */
+        .config-card {
+            background: rgba(255, 255, 255, 0.02);
+            border: 1px solid var(--border-color);
+            border-radius: 16px;
+            padding: 18px 24px;
+            display: flex;
+            flex-wrap: wrap;
+            gap: 15px;
+            align-items: center;
+            justify-content: space-between;
+            backdrop-filter: blur(10px);
+        }
+
+        .config-group {
+            display: flex;
+            gap: 10px;
+            align-items: center;
+            flex-grow: 1;
+        }
+
+        .config-group label {
+            font-size: 14px;
+            color: var(--text-secondary);
+            white-space: nowrap;
+        }
+
+        .config-group input {
+            background: rgba(0, 0, 0, 0.3);
+            border: 1px solid var(--border-color);
+            color: var(--text-primary);
+            padding: 8px 12px;
+            border-radius: 8px;
+            font-family: inherit;
+            width: 100%;
+            max-width: 350px;
+        }
+
+        .config-group input:focus {
+            outline: none;
+            border-color: var(--color-blue);
+        }
+
+        .btn {
+            background: var(--color-blue);
+            color: white;
+            border: none;
+            padding: 8px 18px;
+            border-radius: 8px;
+            cursor: pointer;
+            font-weight: 600;
+            font-family: inherit;
+            transition: all 0.2s ease;
+        }
+
+        .btn:hover {
+            opacity: 0.9;
+            transform: translateY(-1px);
+        }
+
+        .btn-simulator {
+            background: rgba(255, 255, 255, 0.08);
+            border: 1px solid var(--border-color);
+            color: var(--text-primary);
+        }
+
+        .btn-simulator:hover {
+            background: rgba(255, 255, 255, 0.15);
+        }
+
+        /* GRID LAYOUT */
+        .grid-stats {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(240px, 1fr));
+            gap: 20px;
+        }
+
+        .card-stat {
+            background: var(--bg-secondary);
+            border: 1px solid var(--border-color);
+            border-radius: 16px;
+            padding: 24px;
+            display: flex;
+            flex-direction: column;
+            gap: 12px;
+            position: relative;
+            overflow: hidden;
+            transition: transform 0.3s ease, border-color 0.3s ease;
+        }
+
+        .card-stat:hover {
+            transform: translateY(-2px);
+            border-color: rgba(255, 255, 255, 0.15);
+        }
+
+        .card-stat::before {
+            content: '';
+            position: absolute;
+            top: 0;
+            left: 0;
+            width: 4px;
+            height: 100%;
+            background: var(--color-blue);
+        }
+
+        .card-stat.cars::before { background: var(--color-blue); }
+        .card-stat.barrier::before { background: var(--color-green); }
+        .card-stat.sensor::before { background: var(--color-orange); }
+
+        .stat-label {
+            font-size: 14px;
+            color: var(--text-secondary);
+            text-transform: uppercase;
+            letter-spacing: 0.5px;
+        }
+
+        .stat-value {
+            font-size: 36px;
+            font-weight: 800;
+            line-height: 1;
+        }
+
+        .stat-desc {
+            font-size: 12px;
+            color: var(--text-secondary);
+        }
+
+        /* DYNAMIC MONITOR PANEL */
+        .monitor-layout {
+            display: grid;
+            grid-template-columns: 1fr 2fr;
+            gap: 30px;
+        }
+
+        @media (max-width: 968px) {
+            .monitor-layout {
+                grid-template-columns: 1fr;
+            }
+        }
+
+        .panel-visual {
+            background: var(--bg-secondary);
+            border: 1px solid var(--border-color);
+            border-radius: 20px;
+            padding: 30px;
+            display: flex;
+            flex-direction: column;
+            align-items: center;
+            justify-content: center;
+            gap: 40px;
+            min-height: 400px;
+            position: relative;
+        }
+
+        .visual-title {
+            position: absolute;
+            top: 20px;
+            left: 20px;
+            font-weight: 600;
+            font-size: 16px;
+            color: var(--text-secondary);
+        }
+
+        /* GATE ANIMATION */
+        .gate-container {
+            width: 200px;
+            height: 200px;
+            position: relative;
+            display: flex;
+            align-items: center;
+            justify-content: center;
+        }
+
+        .gate-post {
+            width: 24px;
+            height: 120px;
+            background: #475569;
+            border-radius: 6px;
+            position: absolute;
+            bottom: 20px;
+            left: 30px;
+            box-shadow: 0 4px 10px rgba(0,0,0,0.5);
+            z-index: 2;
+        }
+
+        .gate-post::after {
+            content: '';
+            width: 32px;
+            height: 32px;
+            background: #f59e0b;
+            border-radius: 50%;
+            position: absolute;
+            top: 10px;
+            left: -4px;
+            border: 4px solid #1e293b;
+        }
+
+        .gate-arm {
+            width: 140px;
+            height: 12px;
+            background: repeating-linear-gradient(
+                45deg,
+                #ef4444,
+                #ef4444 15px,
+                #ffffff 15px,
+                #ffffff 30px
+            );
+            border-radius: 6px;
+            position: absolute;
+            bottom: 90px;
+            left: 45px;
+            transform-origin: 0% 50%;
+            transform: rotate(0deg);
+            transition: transform 1.2s cubic-bezier(0.4, 0, 0.2, 1);
+            box-shadow: 0 4px 6px rgba(0,0,0,0.3);
+            z-index: 3;
+        }
+
+        .gate-container.open .gate-arm {
+            transform: rotate(-90deg);
+            transition: transform 1.6s cubic-bezier(0.25, 1, 0.5, 1);
+        }
+
+        .gate-container.closing .gate-arm {
+            transform: rotate(0deg);
+            transition: transform 5.0s linear;
+        }
+
+        .traffic-light {
+            width: 45px;
+            height: 135px;
+            background: #1e293b;
+            border-radius: 12px;
+            padding: 10px;
+            display: flex;
+            flex-direction: column;
+            justify-content: space-between;
+            align-items: center;
+            border: 2px solid #334155;
+            box-shadow: 0 10px 20px rgba(0,0,0,0.4);
+        }
+
+        .light {
+            width: 26px;
+            height: 26px;
+            border-radius: 50%;
+            background-color: #334155;
+            transition: all 0.3s ease;
+        }
+
+        .light.red.active {
+            background-color: var(--color-red);
+            box-shadow: 0 0 15px var(--color-red), 0 0 30px var(--color-red);
+        }
+
+        .light.yellow.active {
+            background-color: var(--color-orange);
+            box-shadow: 0 0 15px var(--color-orange), 0 0 30px var(--color-orange);
+        }
+
+        .light.green.active {
+            background-color: var(--color-green);
+            box-shadow: 0 0 15px var(--color-green), 0 0 30px var(--color-green);
+        }
+
+        .visual-display-status {
+            text-align: center;
+            margin-top: 10px;
+        }
+
+        .visual-status-text {
+            font-size: 24px;
+            font-weight: 800;
+            text-transform: uppercase;
+            letter-spacing: 1px;
+            transition: color 0.3s ease;
+        }
+
+        .text-red { color: var(--color-red); }
+        .text-green { color: var(--color-green); }
+        .text-orange { color: var(--color-orange); }
+
+        /* CHARTS PANEL */
+        .panel-charts {
+            background: var(--bg-secondary);
+            border: 1px solid var(--border-color);
+            border-radius: 20px;
+            padding: 24px;
+            display: flex;
+            flex-direction: column;
+            gap: 20px;
+        }
+
+        .chart-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        .chart-title {
+            font-weight: 600;
+            font-size: 16px;
+            color: var(--text-secondary);
+        }
+
+        .chart-container {
+            position: relative;
+            width: 100%;
+            height: 280px;
+        }
+
+        /* LOGS TABLE */
+        .panel-logs {
+            background: var(--bg-secondary);
+            border: 1px solid var(--border-color);
+            border-radius: 20px;
+            padding: 24px;
+            display: flex;
+            flex-direction: column;
+            gap: 20px;
+        }
+
+        .table-container {
+            width: 100%;
+            overflow-x: auto;
+        }
+
+        table {
+            width: 100%;
+            border-collapse: collapse;
+            text-align: left;
+        }
+
+        th {
+            padding: 14px 16px;
+            color: var(--text-secondary);
+            font-weight: 600;
+            font-size: 14px;
+            border-bottom: 1px solid var(--border-color);
+        }
+
+        td {
+            padding: 14px 16px;
+            font-size: 15px;
+            border-bottom: 1px solid var(--border-color);
+        }
+
+        tr:hover td {
+            background: rgba(255, 255, 255, 0.01);
+        }
+
+        .badge-table {
+            padding: 4px 8px;
+            border-radius: 6px;
+            font-size: 12px;
+            font-weight: 600;
+            display: inline-block;
+        }
+
+        .badge-table.open {
+            background: rgba(16, 185, 129, 0.15);
+            color: var(--color-green);
+        }
+
+        .badge-table.closed {
+            background: rgba(239, 68, 68, 0.15);
+            color: var(--color-red);
+        }
+
+        footer {
+            padding: 30px;
+            text-align: center;
+            font-size: 14px;
+            color: var(--text-secondary);
+            border-top: 1px solid var(--border-color);
+            margin-top: auto;
+        }
+
+        /* SIMULATOR MODAL */
+        .simulator-badge {
+            background: rgba(245, 158, 11, 0.15) !important;
+            color: var(--color-orange) !important;
+            border-color: rgba(245, 158, 11, 0.3) !important;
+        }
+    </style>
+</head>
+<body>
+
+    <header>
+        <div class="logo-container">
+            <div class="logo-icon">🚗</div>
+            <div>
+                <h1>Control de Acceso Vehicular</h1>
+                <p style="font-size: 12px; color: var(--text-secondary);">Sistema Inteligente de Monitoreo</p>
+            </div>
+        </div>
+        <div class="status-badge" id="conn-badge">
+            <span class="status-dot" id="conn-dot"></span>
+            <span id="conn-text">Conectando...</span>
+        </div>
+    </header>
+
+    <main>
+        <!-- CONFIGURATION & CONTROLS -->
+        <section class="config-card">
+            <div class="config-group">
+                <label for="node-red-url">Endpoint Node-RED:</label>
+                <input type="text" id="node-red-url" placeholder="http://127.0.0.1:1880/api/datos" value="">
+            </div>
+            <div style="display: flex; gap: 10px;">
+                <button class="btn" id="btn-save-config">Conectar API</button>
+                <button class="btn btn-simulator" id="btn-toggle-sim">Modo Simulador</button>
+            </div>
+        </section>
+
+        <!-- CAR STATS -->
+        <section class="grid-stats">
+            <div class="card-stat cars">
+                <div class="stat-label">Autos Hoy</div>
+                <div class="stat-value" id="stat-today">0</div>
+                <div class="stat-desc" id="stat-today-desc">Flujo de vehículos hoy</div>
+            </div>
+            <div class="card-stat barrier">
+                <div class="stat-label">Estado Barrera</div>
+                <div class="stat-value" id="stat-gate" style="font-size: 28px;">CERRADA</div>
+                <div class="stat-desc" id="stat-gate-desc">Posición actual de la barra</div>
+            </div>
+            <div class="card-stat sensor">
+                <div class="stat-label">Último Sensor</div>
+                <div class="stat-value" id="stat-sensor">0 cm</div>
+                <div class="stat-desc">Distancia del ultrasónico</div>
+            </div>
+            <div class="card-stat cars" style="--color-blue: var(--color-orange);">
+                <div class="stat-label">Total Histórico</div>
+                <div class="stat-value" id="stat-total">0</div>
+                <div class="stat-desc">Acumulado total de carros</div>
+            </div>
+        </section>
+
+        <!-- MONITOR Y GRAFICO -->
+        <section class="monitor-layout">
+            <!-- Representación Visual -->
+            <div class="panel-visual">
+                <div class="visual-title">Monitoreo Físico</div>
+                
+                <div style="display: flex; gap: 40px; align-items: center; justify-content: center; width: 100%;">
+                    <!-- Traffic Light -->
+                    <div class="traffic-light">
+                        <div class="light red active" id="light-red"></div>
+                        <div class="light yellow" id="light-yellow"></div>
+                        <div class="light green" id="light-green"></div>
+                    </div>
+                    
+                    <!-- Gate Barrier -->
+                    <div class="gate-container" id="gate-visual">
+                        <div class="gate-post"></div>
+                        <div class="gate-arm" id="gate-arm"></div>
+                    </div>
+                </div>
+
+                <div class="visual-display-status">
+                    <div class="visual-status-text text-red" id="visual-status">PASO DENEGADO</div>
+                </div>
+            </div>
+
+            <!-- Gráfico de Estadísticas -->
+            <div class="panel-charts">
+                <div class="chart-header">
+                    <div class="chart-title">Vehículos Detectados por Hora</div>
+                    <div class="stat-desc" id="chart-update-time">Actualizado en tiempo real</div>
+                </div>
+                <div class="chart-container">
+                    <canvas id="trafficChart"></canvas>
+                </div>
+            </div>
+        </section>
+
+        <!-- REGISTROS RECIENTES -->
+        <section class="panel-logs">
+            <div style="display: flex; justify-content: space-between; align-items: center;">
+                <div class="chart-title">Historial de Eventos</div>
+                <button class="btn" id="btn-reset-data" style="background: var(--color-red); border-color: var(--color-red); color: white; padding: 6px 12px; font-size: 12px;">Reiniciar Datos</button>
+            </div>
+            <div class="table-container">
+                <table>
+                    <thead>
+                        <tr>
+                            <th>Fecha y Hora</th>
+                            <th>Evento</th>
+                            <th>Sensor (Distancia)</th>
+                            <th>Estado Barrera</th>
+                        </tr>
+                    </thead>
+                    <tbody id="logs-tbody">
+                        <tr>
+                            <td colspan="4" style="text-align: center; color: var(--text-secondary); padding: 40px;">No hay datos disponibles. Conecta tu API o activa el simulador.</td>
+                        </tr>
+                    </tbody>
+                </table>
+            </div>
+        </section>
+    </main>
+
+    <footer>
+        <p>Control de Acceso Vehicular con ESP32 & Node-RED &copy; 2026</p>
+    </footer>
+
+    <script>
+        // CONFIGURACIÓN DE ENDPOINTS
+        let apiBaseUrl = localStorage.getItem('nodeRedApiUrl') || '';
+        document.getElementById('node-red-url').value = apiBaseUrl;
+
+        let isSimulationMode = true; // Activo por defecto para que la interfaz se vea viva al instante
+        let updateInterval = null;
+        let trafficChart = null;
+
+        // Datos simulados iniciales
+        let simData = {
+            todayCount: 18,
+            totalCount: 142,
+            gateState: "CERRADA",
+            lastDistance: 150,
+            hourlyTraffic: [2, 0, 1, 4, 6, 5, 0, 0, 0, 0, 0, 0], // Últimas 12 horas
+            logs: [
+                { time: "2026-06-15 14:10:25", event: "Auto Detectado", distance: "25 cm", state: "ABIERTA" },
+                { time: "2026-06-15 14:10:35", event: "Barrera Cerrada", distance: "185 cm", state: "CERRADA" },
+                { time: "2026-06-15 14:45:12", event: "Auto Detectado", distance: "18 cm", state: "ABIERTA" },
+                { time: "2026-06-15 14:45:22", event: "Barrera Cerrada", distance: "160 cm", state: "CERRADA" },
+                { time: "2026-06-15 15:02:01", event: "Auto Detectado", distance: "12 cm", state: "ABIERTA" },
+                { time: "2026-06-15 15:02:11", event: "Barrera Cerrada", distance: "172 cm", state: "CERRADA" },
+            ]
+        };
+
+        // DOM ELEMENTS
+        const connBadge = document.getElementById('conn-badge');
+        const connDot = document.getElementById('conn-dot');
+        const connText = document.getElementById('conn-text');
+        const statToday = document.getElementById('stat-today');
+        const statGate = document.getElementById('stat-gate');
+        const statSensor = document.getElementById('stat-sensor');
+        const statTotal = document.getElementById('stat-total');
+        const gateVisual = document.getElementById('gate-visual');
+        const lightRed = document.getElementById('light-red');
+        const lightYellow = document.getElementById('light-yellow');
+        const lightGreen = document.getElementById('light-green');
+        const visualStatus = document.getElementById('visual-status');
+        const logsTbody = document.getElementById('logs-tbody');
+        const btnToggleSim = document.getElementById('btn-toggle-sim');
+        const btnResetData = document.getElementById('btn-reset-data');
+        const btnSaveConfig = document.getElementById('btn-save-config');
+        const inputUrl = document.getElementById('node-red-url');
+
+        // INICIALIZACIÓN
+        window.addEventListener('DOMContentLoaded', () => {
+            initChart();
+            updateConnectionStatus();
+            
+            if (apiBaseUrl) {
+                isSimulationMode = false;
+                btnToggleSim.textContent = "Activar Simulador";
+                btnToggleSim.classList.remove('simulator-badge');
+                startPolling();
+            } else {
+                enableSimulationMode();
+            }
+        });
+
+        // GUARDAR CONFIGURACIÓN API
+        btnSaveConfig.addEventListener('click', () => {
+            const url = inputUrl.value.trim();
+            if (url) {
+                apiBaseUrl = url;
+                localStorage.setItem('nodeRedApiUrl', apiBaseUrl);
+                isSimulationMode = false;
+                btnToggleSim.textContent = "Activar Simulador";
+                btnToggleSim.classList.remove('simulator-badge');
+                startPolling();
+                alert('URL de API guardada. Intentando conectar a Node-RED...');
+            } else {
+                alert('Por favor, ingresa una URL válida.');
+            }
+        });
+
+        // CAMBIAR A MODO SIMULACIÓN
+        btnToggleSim.addEventListener('click', () => {
+            if (isSimulationMode) {
+                if (apiBaseUrl) {
+                    isSimulationMode = false;
+                    btnToggleSim.textContent = "Activar Simulador";
+                    btnToggleSim.classList.remove('simulator-badge');
+                    startPolling();
+                } else {
+                    alert("Introduce un Endpoint de Node-RED primero para salir del modo simulación.");
+                }
+            } else {
+                enableSimulationMode();
+            }
+        });
+
+        function enableSimulationMode() {
+            isSimulationMode = true;
+            stopPolling();
+            btnToggleSim.textContent = "Modo Simulador Activo";
+            btnToggleSim.classList.add('simulator-badge');
+            updateConnectionStatus();
+            renderDashboard(simData);
+            startSimulatorEngine();
+        }
+
+        // CONTROL DE CONEXIÓN
+        function updateConnectionStatus() {
+            if (isSimulationMode) {
+                connBadge.className = "status-badge simulator-badge";
+                connDot.className = "status-dot online";
+                connText.textContent = "Modo Demo / Simulador";
+            } else {
+                connBadge.className = "status-badge";
+                connDot.className = "status-dot offline";
+                connText.textContent = "Conectando API...";
+            }
+        }
+
+        // RENDERIZAR DATOS EN INTERFAZ
+        function renderDashboard(data) {
+            // Stats
+            statToday.textContent = data.todayCount;
+            statSensor.textContent = data.lastDistance + " cm";
+            statTotal.textContent = data.totalCount;
+
+            const lightState = data.lightState || (data.gateState === "ABIERTA" ? "VERDE" : "ROJO");
+
+            // Reset classes
+            gateVisual.classList.remove('open', 'closing');
+            lightRed.classList.remove('active');
+            lightYellow.classList.remove('active');
+            lightGreen.classList.remove('active');
+
+            if (data.gateState === "ABIERTA" && lightState !== "AMARILLO") {
+                gateVisual.classList.add('open');
+            } else if (data.gateState === "CERRANDO" || lightState === "AMARILLO") {
+                gateVisual.classList.add('closing');
+            }
+
+            // Semáforo y textos
+            if (lightState === "VERDE") {
+                lightGreen.classList.add('active');
+                visualStatus.textContent = "PASO LIBRE";
+                visualStatus.className = "visual-status-text text-green";
+                statGate.style.color = "var(--color-green)";
+                statGate.textContent = "ABIERTA";
+            } else if (lightState === "AMARILLO") {
+                lightYellow.classList.add('active');
+                visualStatus.textContent = "BAJANDO BARRERA";
+                visualStatus.className = "visual-status-text text-orange";
+                statGate.style.color = "var(--color-orange)";
+                statGate.textContent = "CERRANDO";
+            } else {
+                lightRed.classList.add('active');
+                visualStatus.textContent = "PASO DENEGADO";
+                visualStatus.className = "visual-status-text text-red";
+                statGate.style.color = "var(--color-red)";
+                statGate.textContent = "CERRADA";
+            }
+
+            // Render Chart
+            if (trafficChart) {
+                trafficChart.data.datasets[0].data = data.hourlyTraffic;
+                trafficChart.update();
+            }
+
+            // Render Table Logs
+            logsTbody.innerHTML = '';
+            if (data.logs.length === 0) {
+                logsTbody.innerHTML = `<tr><td colspan="4" style="text-align: center; color: var(--text-secondary);">Sin registros.</td></tr>`;
+                return;
+            }
+
+            // Mostrar últimos 6 logs
+            const latestLogs = [...data.logs].reverse().slice(0, 8);
+            latestLogs.forEach(log => {
+                const tr = document.createElement('tr');
+                const badgeClass = log.state === "ABIERTA" ? "badge-table open" : "badge-table closed";
+                tr.innerHTML = `
+                    <td>${log.time}</td>
+                    <td>${log.event}</td>
+                    <td>${log.distance}</td>
+                    <td><span class="${badgeClass}">${log.state}</span></td>
+                `;
+                logsTbody.appendChild(tr);
+            });
+        }
+
+        // CHART.JS SETUP
+        function initChart() {
+            const ctx = document.getElementById('trafficChart').getContext('2d');
+            
+            // Generar horas para el eje X (últimas 12 horas)
+            const hours = [];
+            const now = new Date();
+            for (let i = 11; i >= 0; i--) {
+                const h = new Date(now.getTime() - (i * 60 * 60 * 1000));
+                hours.push(h.getHours() + ":00");
+            }
+
+            trafficChart = new Chart(ctx, {
+                type: 'bar',
+                data: {
+                    labels: hours,
+                    datasets: [{
+                        label: 'Autos detectados',
+                        data: Array(12).fill(0),
+                        backgroundColor: 'rgba(59, 130, 246, 0.4)',
+                        borderColor: '#3b82f6',
+                        borderWidth: 2,
+                        borderRadius: 6,
+                        hoverBackgroundColor: 'rgba(16, 185, 129, 0.6)',
+                        hoverBorderColor: '#10b981'
+                    }]
+                },
+                options: {
+                    responsive: true,
+                    maintainAspectRatio: false,
+                    plugins: {
+                        legend: {
+                            display: false
+                        }
+                    },
+                    scales: {
+                        y: {
+                            beginAtZero: true,
+                            grid: {
+                                color: 'rgba(255, 255, 255, 0.05)'
+                            },
+                            ticks: {
+                                color: '#94a3b8',
+                                stepSize: 1
+                            }
+                        },
+                        x: {
+                            grid: {
+                                display: false
+                            },
+                            ticks: {
+                                color: '#94a3b8'
+                            }
+                        }
+                    }
+                }
+            });
+        }
+
+        // MOTOR DE SIMULACIÓN (Simula pasos de carros en tiempo real)
+        let simInterval = null;
+        function startSimulatorEngine() {
+            if (simInterval) clearInterval(simInterval);
+            
+            simInterval = setInterval(() => {
+                if (!isSimulationMode) return;
+                
+                // 25% de probabilidad de que pase un auto en cada ciclo (cada 12 segundos)
+                if (Math.random() < 0.25) {
+                    simulateCarEntrance();
+                }
+            }, 12000);
+        }
+
+        function simulateCarEntrance() {
+            const now = new Date();
+            const timeStr = now.toISOString().replace('T', ' ').substring(0, 19);
+            const randomDistance = Math.floor(Math.random() * 25) + 5; // 5 a 30 cm (detección ultrasónico)
+            
+            // 1. Detección de auto - abrir barrera (VERDE)
+            simData.todayCount += 1;
+            simData.totalCount += 1;
+            simData.gateState = "ABIERTA";
+            simData.lightState = "VERDE";
+            simData.lastDistance = randomDistance;
+            
+            // Sumar al gráfico de la hora actual
+            simData.hourlyTraffic[11] += 1;
+            
+            simData.logs.push({
+                time: timeStr,
+                event: "VERDE: Auto Detectado",
+                distance: `${randomDistance} cm`,
+                state: "ABIERTA"
+            });
+            
+            renderDashboard(simData);
+
+            // 2. Transcurridos 3 segundos, simular amarillo (barrera cerrándose lentamente)
+            setTimeout(() => {
+                if (!isSimulationMode) return;
+                const yellowTime = new Date();
+                const yellowTimeStr = yellowTime.toISOString().replace('T', ' ').substring(0, 19);
+                simData.gateState = "CERRANDO";
+                simData.lightState = "AMARILLO";
+                simData.logs.push({
+                    time: yellowTimeStr,
+                    event: "AMARILLO: Bajando barrera lentamente",
+                    distance: `${simData.lastDistance} cm`,
+                    state: "ABIERTA"
+                });
+                renderDashboard(simData);
+            }, 3000);
+            
+            // 3. Transcurridos 8 segundos total (5s de amarillo), la barrera se cierra (ROJO)
+            setTimeout(() => {
+                if (!isSimulationMode) return;
+                const closeTime = new Date();
+                const closeTimeStr = closeTime.toISOString().replace('T', ' ').substring(0, 19);
+                const safeDistance = Math.floor(Math.random() * 100) + 120; // > 120 cm (vacío)
+                
+                simData.gateState = "CERRADA";
+                simData.lightState = "ROJO";
+                simData.lastDistance = safeDistance;
+                simData.logs.push({
+                    time: closeTimeStr,
+                    event: "ROJO: Barrera Cerrada",
+                    distance: `${safeDistance} cm`,
+                    state: "CERRADA"
+                });
+                renderDashboard(simData);
+            }, 8000);
+        }
+
+        btnResetData.addEventListener('click', async () => {
+            const confirmReset = confirm("¿Estás seguro de reiniciar todos los datos a cero? Esto borrará el historial y los contadores en la aplicación y en el servidor.");
+            if (!confirmReset) return;
+
+            const initialStats = {
+                todayCount: 0,
+                totalCount: 0,
+                gateState: "CERRADA",
+                lightState: "ROJO",
+                lastDistance: 150,
+                hourlyTraffic: Array(12).fill(0),
+                logs: []
+            };
+
+            // Reset local stats
+            if (isSimulationMode) {
+                simData = initialStats;
+                renderDashboard(simData);
+            } else {
+                renderDashboard(initialStats);
+                if (apiBaseUrl) {
+                    try {
+                        const resetUrl = apiBaseUrl.replace('/api/datos', '/api/reset');
+                        const response = await fetch(resetUrl, {
+                            method: 'POST',
+                            headers: {
+                                'Content-Type': 'application/json'
+                            }
+                        });
+                        if (!response.ok) throw new Error('Error al reiniciar los datos del servidor');
+                        alert("Datos del sistema físico reiniciados correctamente en Node-RED.");
+                    } catch (error) {
+                        console.error('Error al reiniciar datos:', error);
+                        alert("Error al conectar con Node-RED para reiniciar datos: " + error.message);
+                    }
+                }
+            }
+        });
+
+        // CLIENTE DE CONSULTA REAL (POLLING DE API NODE-RED)
+        function startPolling() {
+            stopPolling();
+            updateConnectionStatus();
+            
+            // Primera llamada inmediata
+            fetchDataFromNodeRed();
+            
+            // Consultar cada 3 segundos
+            updateInterval = setInterval(fetchDataFromNodeRed, 3000);
+        }
+
+        function stopPolling() {
+            if (updateInterval) {
+                clearInterval(updateInterval);
+                updateInterval = null;
+            }
+            if (simInterval) {
+                clearInterval(simInterval);
+                simInterval = null;
+            }
+        }
+
+        async function fetchDataFromNodeRed() {
+            if (!apiBaseUrl) return;
+
+            try {
+                const response = await fetch(apiBaseUrl, {
+                    method: 'GET',
+                    headers: {
+                        'Accept': 'application/json'
+                    }
+                });
+
+                if (!response.ok) throw new Error('Error de conexión con el servidor Node-RED');
+
+                const data = await response.json();
+                
+                // Formateamos los datos si vinieran estructurados del Node-RED
+                // Asumiendo que Node-RED devuelve un objeto con el formato similar:
+                // { todayCount, totalCount, gateState, lastDistance, hourlyTraffic, logs }
+                
+                connDot.className = "status-dot online";
+                connText.textContent = "Conectado a Node-RED";
+                
+                renderDashboard(data);
+                
+            } catch (error) {
+                console.error(error);
+                connDot.className = "status-dot offline";
+                connText.textContent = "Error de Conexión (Reintentando...)";
+            }
+        }
+    </script>
+</body>
+</html>
